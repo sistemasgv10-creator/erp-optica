@@ -1,0 +1,553 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USUARIOS Y AUTENTICACIÓN ====================
+
+enum Role {
+  ADMIN_DISTRIBUIDORA    // Usuario 1
+  VENDEDOR               // Usuario 2
+  ALMACEN_BENEFICENCIA   // Usuario 3
+  ALMACEN_SEDENA         // Usuario 4
+  ALMACEN_PT             // Usuario 5
+  PRODUCCION             // Usuario 6
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  password      String
+  role          Role
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relaciones
+  ventas        Venta[]
+  hojaViajeras  HojaViajera[]
+  mermas        Merma[]
+  movimientos   MovimientoArmazon[]
+  
+  @@index([email])
+  @@map("users")
+}
+
+// ==================== MÓDULO DISTRIBUIDORA ====================
+
+model Venta {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  fecha           DateTime @default(now())
+  cliente         String
+  producto        String
+  cantidad        Int
+  precioUnitario  Float
+  total           Float
+  notas           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([fecha])
+  @@map("ventas")
+}
+
+enum EstatusHojaViajera {
+  CREADA
+  IMPRESA
+  ENTREGADA_ALMACEN
+  EN_PROCESO
+  COMPLETADA
+}
+
+model HojaViajera {
+  id              String             @id @default(cuid())
+  folio           String             @unique
+  userId          String
+  user            User               @relation(fields: [userId], references: [id])
+  cliente         String
+  estatus         EstatusHojaViajera @default(CREADA)
+  fechaCreacion   DateTime           @default(now())
+  fechaImpresion  DateTime?
+  fechaEntrega    DateTime?
+  observaciones   String?            @db.Text
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  // Relaciones
+  items           HojaViajeraItem[]
+  ordenBeneficencia OrderBeneficencia?
+  ordenSedena       OrderSedena?
+
+  @@index([folio])
+  @@index([estatus])
+  @@map("hojas_viajeras")
+}
+
+model HojaViajeraItem {
+  id              String      @id @default(cuid())
+  hojaViajeraId   String
+  hojaViajera     HojaViajera @relation(fields: [hojaViajeraId], references: [id], onDelete: Cascade)
+  productoId      String
+  producto        Producto    @relation(fields: [productoId], references: [id])
+  cantidad        Int
+  descripcion     String?
+
+  @@index([hojaViajeraId])
+  @@index([productoId])
+  @@map("hoja_viajera_items")
+}
+
+model ReporteAtraso {
+  id          String   @id @default(cuid())
+  fecha       DateTime
+  tipo        String   // 'DIARIO' o 'SEMANAL'
+  cliente     String
+  producto    String
+  cantidad    Int
+  diasAtraso  Int
+  observaciones String? @db.Text
+  exportado   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([fecha])
+  @@index([tipo])
+  @@map("reportes_atrasos")
+}
+
+// ==================== MÓDULO ALMACÉN ====================
+
+model Producto {
+  id              String   @id @default(cuid())
+  codigo          String   @unique
+  nombre          String
+  descripcion     String?  @db.Text
+  categoria       String
+  stockMinimo     Int      @default(10)
+  unidadMedida    String
+  activo          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relaciones
+  inventarios     Inventario[]
+  hojaViajeraItems HojaViajeraItem[]
+  solicitudes     SolicitudArticulo[]
+  mermas          Merma[]
+  itemsBeneficencia ItemBeneficencia[]
+  itemsSedena       ItemSedena[]
+
+  @@index([codigo])
+  @@map("productos")
+}
+
+model Inventario {
+  id          String   @id @default(cuid())
+  productoId  String
+  producto    Producto @relation(fields: [productoId], references: [id])
+  cantidad    Int      @default(0)
+  ubicacion   String
+  lote        String?
+  fechaIngreso DateTime @default(now())
+  ultimaActualizacion DateTime @updatedAt
+
+  @@unique([productoId, ubicacion])
+  @@index([productoId])
+  @@map("inventario")
+}
+
+model SolicitudArticulo {
+  id          String   @id @default(cuid())
+  productoId  String
+  producto    Producto @relation(fields: [productoId], references: [id])
+  cantidad    Int
+  motivo      String
+  urgente     Boolean  @default(false)
+  atendida    Boolean  @default(false)
+  fechaSolicitud DateTime @default(now())
+  fechaAtencion  DateTime?
+  observaciones  String?  @db.Text
+
+  @@index([productoId])
+  @@index([atendida])
+  @@map("solicitudes_articulos")
+}
+
+enum TipoMerma {
+  INVENTARIO
+  PRODUCCION_TALLADO
+  PRODUCCION_BISEL
+}
+
+model Merma {
+  id          String    @id @default(cuid())
+  productoId  String
+  producto    Producto  @relation(fields: [productoId], references: [id])
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  cantidad    Int
+  tipo        TipoMerma
+  responsable String?   // Nombre del tallador o biselador si aplica
+  motivo      String
+  fecha       DateTime  @default(now())
+  observaciones String? @db.Text
+
+  @@index([productoId])
+  @@index([tipo])
+  @@index([fecha])
+  @@map("mermas")
+}
+
+// ==================== ORDENES BENEFICENCIA ====================
+
+enum EstatusOrden {
+  PENDIENTE
+  HOJA_IMPRESA
+  SURTIDO
+  EN_PRODUCCION
+  TERMINADO
+  EMBARCADO
+  ENTREGADO
+}
+
+model OrderBeneficencia {
+  id              String       @id @default(cuid())
+  folio           String       @unique
+  hojaViajeraId   String       @unique
+  hojaViajera     HojaViajera  @relation(fields: [hojaViajeraId], references: [id])
+  sede            String
+  esGarantia      Boolean      @default(false)
+  estatus         EstatusOrden @default(PENDIENTE)
+  fechaPedido     DateTime     @default(now())
+  fechaSurtido    DateTime?
+  fechaActualizacion DateTime   @updatedAt
+  observaciones   String?      @db.Text
+
+  // Relaciones
+  items           ItemBeneficencia[]
+  produccion      ProduccionBeneficencia?
+  embarque        Embarque?
+
+  @@index([folio])
+  @@index([estatus])
+  @@index([sede])
+  @@map("orders_beneficencia")
+}
+
+model ItemBeneficencia {
+  id        String            @id @default(cuid())
+  ordenId   String
+  orden     OrderBeneficencia @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+  productoId String
+  producto  Producto          @relation(fields: [productoId], references: [id])
+  cantidad  Int
+  surtido   Boolean           @default(false)
+
+  @@index([ordenId])
+  @@index([productoId])
+  @@map("items_beneficencia")
+}
+
+// ==================== ORDENES SEDENA ====================
+
+model OrderSedena {
+  id              String       @id @default(cuid())
+  folio           String       @unique
+  hojaViajeraId   String       @unique
+  hojaViajera     HojaViajera  @relation(fields: [hojaViajeraId], references: [id])
+  escalon         String
+  esGarantia      Boolean      @default(false)
+  estatus         EstatusOrden @default(PENDIENTE)
+  fechaPedido     DateTime     @default(now())
+  fechaSurtido    DateTime?
+  fechaActualizacion DateTime   @updatedAt
+  observaciones   String?      @db.Text
+
+  // Relaciones
+  items           ItemSedena[]
+  produccion      ProduccionSedena?
+  embarque        Embarque?
+
+  @@index([folio])
+  @@index([estatus])
+  @@index([escalon])
+  @@map("orders_sedena")
+}
+
+model ItemSedena {
+  id        String      @id @default(cuid())
+  ordenId   String
+  orden     OrderSedena @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+  productoId String
+  producto  Producto    @relation(fields: [productoId], references: [id])
+  cantidad  Int
+  surtido   Boolean     @default(false)
+
+  @@index([ordenId])
+  @@index([productoId])
+  @@map("items_sedena")
+}
+
+// ==================== MÓDULO PRODUCCIÓN ====================
+
+enum TipoProceso {
+  TALLADO
+  BISEL
+  AMBOS
+}
+
+model ProduccionBeneficencia {
+  id              String      @id @default(cuid())
+  ordenId         String      @unique
+  orden           OrderBeneficencia @relation(fields: [ordenId], references: [id])
+  tipoProceso     TipoProceso
+  enTallado       Boolean     @default(false)
+  enBisel         Boolean     @default(false)
+  completado      Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relaciones
+  tallado         ControlTallado[]
+  bisel           ControlBisel[]
+
+  @@index([ordenId])
+  @@map("produccion_beneficencia")
+}
+
+model ProduccionSedena {
+  id              String      @id @default(cuid())
+  ordenId         String      @unique
+  orden           OrderSedena @relation(fields: [ordenId], references: [id])
+  tipoProceso     TipoProceso
+  enTallado       Boolean     @default(false)
+  enBisel         Boolean     @default(false)
+  completado      Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relaciones
+  tallado         ControlTallado[]
+  bisel           ControlBisel[]
+
+  @@index([ordenId])
+  @@map("produccion_sedena")
+}
+
+enum EstatusTallado {
+  ENTRADA
+  EN_PROCESO
+  SALIDA
+  EN_CALIDAD
+  APROBADO
+  RETALLADO
+  MERMA
+}
+
+model ControlTallado {
+  id                    String        @id @default(cuid())
+  produccionBeneficenciaId String?
+  produccionBeneficencia   ProduccionBeneficencia? @relation(fields: [produccionBeneficenciaId], references: [id])
+  produccionSedenaId    String?
+  produccionSedena      ProduccionSedena? @relation(fields: [produccionSedenaId], references: [id])
+  tallador              String
+  cliente               String
+  estatus               EstatusTallado @default(ENTRADA)
+  fechaEntrada          DateTime       @default(now())
+  fechaSalida           DateTime?
+  observaciones         String?        @db.Text
+  intentosRetallado     Int            @default(0)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  // Relación con calidad
+  calidadTallado        CalidadTallado?
+
+  @@index([tallador])
+  @@index([estatus])
+  @@map("control_tallado")
+}
+
+enum EstatusCalidadTallado {
+  OK
+  RETALLADO
+  MERMA
+}
+
+model CalidadTallado {
+  id                String                 @id @default(cuid())
+  controlTalladoId  String                 @unique
+  controlTallado    ControlTallado         @relation(fields: [controlTalladoId], references: [id], onDelete: Cascade)
+  inspector         String
+  estatus           EstatusCalidadTallado
+  requiereBisel     Boolean                @default(false)
+  observaciones     String?                @db.Text
+  fechaInspeccion   DateTime               @default(now())
+
+  @@index([estatus])
+  @@map("calidad_tallado")
+}
+
+enum EstatusBisel {
+  ENTRADA
+  EN_PROCESO
+  SALIDA
+  EN_CALIDAD
+  APROBADO
+  MERMA
+}
+
+model ControlBisel {
+  id                    String        @id @default(cuid())
+  produccionBeneficenciaId String?
+  produccionBeneficencia   ProduccionBeneficencia? @relation(fields: [produccionBeneficenciaId], references: [id])
+  produccionSedenaId    String?
+  produccionSedena      ProduccionSedena? @relation(fields: [produccionSedenaId], references: [id])
+  biselador             String
+  cliente               String
+  estatus               EstatusBisel   @default(ENTRADA)
+  fechaEntrada          DateTime       @default(now())
+  fechaSalida           DateTime?
+  observaciones         String?        @db.Text
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  // Relación con calidad
+  calidadBisel          CalidadBisel?
+
+  @@index([biselador])
+  @@index([estatus])
+  @@map("control_bisel")
+}
+
+enum EstatusCalidadBisel {
+  OK
+  MERMA
+}
+
+model CalidadBisel {
+  id              String              @id @default(cuid())
+  controlBiselId  String              @unique
+  controlBisel    ControlBisel        @relation(fields: [controlBiselId], references: [id], onDelete: Cascade)
+  inspector       String
+  estatus         EstatusCalidadBisel
+  observaciones   String?             @db.Text
+  fechaInspeccion DateTime            @default(now())
+
+  @@index([estatus])
+  @@map("calidad_bisel")
+}
+
+// ==================== PRODUCTO TERMINADO Y EMBARQUES ====================
+
+enum TipoEmbarque {
+  BENEFICENCIA
+  SEDENA
+  DISTRIBUIDORA
+}
+
+enum EstatusEmbarque {
+  PENDIENTE
+  GUIA_CREADA
+  ENTREGADO_PAQUETERIA
+  EN_TRANSITO
+  ENTREGADO
+}
+
+model Embarque {
+  id              String          @id @default(cuid())
+  tipo            TipoEmbarque
+  ordenBeneficenciaId String?     @unique
+  ordenBeneficencia   OrderBeneficencia? @relation(fields: [ordenBeneficenciaId], references: [id])
+  ordenSedenaId   String?         @unique
+  ordenSedena     OrderSedena?    @relation(fields: [ordenSedenaId], references: [id])
+  guia            String?
+  paqueteria      String?
+  estatus         EstatusEmbarque @default(PENDIENTE)
+  fechaCreacion   DateTime        @default(now())
+  fechaGuia       DateTime?
+  fechaEntrega    DateTime?
+  destinatario    String
+  direccion       String          @db.Text
+  observaciones   String?         @db.Text
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([estatus])
+  @@index([tipo])
+  @@map("embarques")
+}
+
+// ==================== MOVIMIENTOS DE ARMAZONES ====================
+
+model MovimientoArmazon {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  tipo        String   // 'ARRIBO' o 'ENVIO'
+  cantidad    Int
+  tipoArmazon String   // 'NIÑO' o 'ADULTO'
+  destino     String   // Escalón (Sedena) o Sede (Beneficencia)
+  fecha       DateTime @default(now())
+  procesado   Boolean  @default(false)
+  observaciones String? @db.Text
+
+  @@index([fecha])
+  @@index([procesado])
+  @@map("movimientos_armazones")
+}
+
+model ListadoArmazon {
+  id          String   @id @default(cuid())
+  fecha       DateTime @default(now())
+  tipoArmazon String   // 'NIÑO' o 'ADULTO'
+  destino     String   // Escalón (Sedena) o Sede (Beneficencia)
+  tipoDestino String   // 'SEDENA' o 'BENEFICENCIA'
+  cantidad    Int
+  createdAt   DateTime @default(now())
+
+  @@index([fecha])
+  @@index([tipoDestino])
+  @@map("listados_armazones")
+}
+
+// ==================== LOGS Y NOTIFICACIONES ====================
+
+model Notificacion {
+  id          String   @id @default(cuid())
+  tipo        String
+  titulo      String
+  mensaje     String   @db.Text
+  modulo      String
+  leida       Boolean  @default(false)
+  userId      String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([leida])
+  @@map("notificaciones")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String
+  accion      String
+  modulo      String
+  detalles    String?  @db.Text
+  ip          String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
