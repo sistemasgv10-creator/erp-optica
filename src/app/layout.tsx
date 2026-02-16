@@ -7,8 +7,8 @@ import { Providers } from './providers';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'ERP Óptica - Sistema de Gestión',
-  description: 'Sistema de gestión empresarial para empresa óptica',
+  title: 'Vision 10 - Sistema de Gestión',
+  description: 'Sistema de organizacion de informacion de V10',
 };
 
 export default function RootLayout({
