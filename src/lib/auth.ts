@@ -78,6 +78,7 @@ export const authOptions: NextAuthOptions = {
 // Función helper para obtener la ruta del dashboard según el rol
 export function getDashboardRouteForRole(role: Role): string {
   const routeMap: Record<Role, string> = {
+    SUPER_ADMIN: '/admin',
     ADMIN_DISTRIBUIDORA: '/distribuidora',
     VENDEDOR: '/distribuidora/ventas',
     ALMACEN_BENEFICENCIA: '/almacen/beneficencia',
@@ -91,25 +92,30 @@ export function getDashboardRouteForRole(role: Role): string {
 
 // Función helper para verificar permisos
 export function hasPermission(userRole: Role, allowedRoles: Role[]): boolean {
+  // SUPER_ADMIN siempre tiene permiso
+  if (userRole === Role.SUPER_ADMIN) return true;
   return allowedRoles.includes(userRole);
 }
 
 // Definición de permisos por módulo
 export const modulePermissions = {
   distribuidora: {
-    ventas: [Role.ADMIN_DISTRIBUIDORA, Role.VENDEDOR],
-    hojasViajeras: [Role.ADMIN_DISTRIBUIDORA],
-    reportes: [Role.ADMIN_DISTRIBUIDORA],
-    controlVendedor: [Role.ADMIN_DISTRIBUIDORA],
+    ventas: [Role.SUPER_ADMIN, Role.ADMIN_DISTRIBUIDORA, Role.VENDEDOR],
+    hojasViajeras: [Role.SUPER_ADMIN, Role.ADMIN_DISTRIBUIDORA],
+    reportes: [Role.SUPER_ADMIN, Role.ADMIN_DISTRIBUIDORA],
+    controlVendedor: [Role.SUPER_ADMIN, Role.ADMIN_DISTRIBUIDORA],
   },
   almacen: {
-    inventario: [Role.ALMACEN_BENEFICENCIA, Role.ALMACEN_SEDENA, Role.ADMIN_DISTRIBUIDORA],
-    beneficencia: [Role.ALMACEN_BENEFICENCIA],
-    sedena: [Role.ALMACEN_SEDENA],
-    pt: [Role.ALMACEN_PT],
-    movimientos: [Role.ALMACEN_PT],
+    inventario: [Role.SUPER_ADMIN, Role.ALMACEN_BENEFICENCIA, Role.ALMACEN_SEDENA, Role.ADMIN_DISTRIBUIDORA],
+    beneficencia: [Role.SUPER_ADMIN, Role.ALMACEN_BENEFICENCIA],
+    sedena: [Role.SUPER_ADMIN, Role.ALMACEN_SEDENA],
+    pt: [Role.SUPER_ADMIN, Role.ALMACEN_PT],
+    movimientos: [Role.SUPER_ADMIN, Role.ALMACEN_PT],
   },
   produccion: {
-    all: [Role.PRODUCCION],
+    all: [Role.SUPER_ADMIN, Role.PRODUCCION],
+  },
+  admin: {
+    usuarios: [Role.SUPER_ADMIN],
   },
 };

@@ -13,6 +13,7 @@ datasource db {
 // ==================== USUARIOS Y AUTENTICACIÓN ====================
 
 enum Role {
+  SUPER_ADMIN            // Super Administrador - acceso total //Super Usuario 
   ADMIN_DISTRIBUIDORA    // Usuario 1
   VENDEDOR               // Usuario 2
   ALMACEN_BENEFICENCIA   // Usuario 3
@@ -20,6 +21,7 @@ enum Role {
   ALMACEN_PT             // Usuario 5
   PRODUCCION             // Usuario 6
 }
+
 
 model User {
   id            String   @id @default(cuid())

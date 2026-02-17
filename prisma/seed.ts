@@ -13,6 +13,12 @@ async function main() {
   // Crear usuarios del sistema
   const users = [
     {
+      email: 'superadmin@optica.com',
+      name: 'Super Administrador',
+      password: await bcrypt.hash('password123', 10),
+      role: Role.SUPER_ADMIN,
+    },
+    {
       email: 'admin.distribuidora@optica.com',
       name: 'Admin Distribuidora',
       password: await bcrypt.hash('password123', 10),
@@ -141,7 +147,7 @@ async function main() {
   // Crear inventario inicial para cada producto
   console.log('📊 Creando inventario inicial...');
   const productosCreados = await prisma.producto.findMany();
-  
+
   for (const producto of productosCreados) {
     await prisma.inventario.upsert({
       where: {

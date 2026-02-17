@@ -18,6 +18,8 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  Shield,
+  Users,
 } from 'lucide-react';
 import { Role } from '@prisma/client';
 import { useState, useEffect } from 'react';
@@ -32,28 +34,42 @@ interface NavItem {
 
 const navigation: NavItem[] = [
   {
+    title: 'Administración',
+    href: '/admin',
+    icon: Shield,
+    roles: [Role.SUPER_ADMIN],
+    children: [
+      {
+        title: 'Gestión de Usuarios',
+        href: '/admin/usuarios',
+        icon: Users,
+        roles: [Role.SUPER_ADMIN],
+      },
+    ],
+  },
+  {
     title: 'Distribuidora',
     href: '/distribuidora',
     icon: ShoppingCart,
-    roles: [Role.ADMIN_DISTRIBUIDORA, Role.VENDEDOR],
+    roles: [Role.SUPER_ADMIN, Role.ADMIN_DISTRIBUIDORA, Role.VENDEDOR],
     children: [
       {
         title: 'Ventas',
         href: '/distribuidora/ventas',
         icon: TrendingUp,
-        roles: [Role.ADMIN_DISTRIBUIDORA, Role.VENDEDOR],
+        roles: [Role.SUPER_ADMIN, Role.ADMIN_DISTRIBUIDORA, Role.VENDEDOR],
       },
       {
         title: 'Hojas Viajeras',
         href: '/distribuidora/hojas-viajeras',
         icon: FileText,
-        roles: [Role.ADMIN_DISTRIBUIDORA],
+        roles: [Role.SUPER_ADMIN, Role.ADMIN_DISTRIBUIDORA],
       },
       {
         title: 'Reportes de Atrasos',
         href: '/distribuidora/reportes',
         icon: BarChart3,
-        roles: [Role.ADMIN_DISTRIBUIDORA],
+        roles: [Role.SUPER_ADMIN, Role.ADMIN_DISTRIBUIDORA],
       },
     ],
   },
@@ -61,37 +77,37 @@ const navigation: NavItem[] = [
     title: 'Almacén',
     href: '/almacen',
     icon: Warehouse,
-    roles: [Role.ALMACEN_BENEFICENCIA, Role.ALMACEN_SEDENA, Role.ALMACEN_PT],
+    roles: [Role.SUPER_ADMIN, Role.ALMACEN_BENEFICENCIA, Role.ALMACEN_SEDENA, Role.ALMACEN_PT],
     children: [
       {
         title: 'Inventario',
         href: '/almacen/inventario',
         icon: Package,
-        roles: [Role.ALMACEN_BENEFICENCIA, Role.ALMACEN_SEDENA],
+        roles: [Role.SUPER_ADMIN, Role.ALMACEN_BENEFICENCIA, Role.ALMACEN_SEDENA],
       },
       {
         title: 'Beneficencia',
         href: '/almacen/beneficencia',
         icon: Package2,
-        roles: [Role.ALMACEN_BENEFICENCIA],
+        roles: [Role.SUPER_ADMIN, Role.ALMACEN_BENEFICENCIA],
       },
       {
         title: 'Sedena',
         href: '/almacen/sedena',
         icon: Package2,
-        roles: [Role.ALMACEN_SEDENA],
+        roles: [Role.SUPER_ADMIN, Role.ALMACEN_SEDENA],
       },
       {
         title: 'Producto Terminado',
         href: '/almacen/pt',
         icon: ClipboardList,
-        roles: [Role.ALMACEN_PT],
+        roles: [Role.SUPER_ADMIN, Role.ALMACEN_PT],
       },
       {
         title: 'Movimientos',
         href: '/almacen/movimientos',
         icon: Truck,
-        roles: [Role.ALMACEN_PT],
+        roles: [Role.SUPER_ADMIN, Role.ALMACEN_PT],
       },
     ],
   },
@@ -99,25 +115,25 @@ const navigation: NavItem[] = [
     title: 'Producción',
     href: '/produccion',
     icon: Factory,
-    roles: [Role.PRODUCCION],
+    roles: [Role.SUPER_ADMIN, Role.PRODUCCION],
     children: [
       {
         title: 'Control Tallado',
         href: '/produccion/tallado',
         icon: Settings,
-        roles: [Role.PRODUCCION],
+        roles: [Role.SUPER_ADMIN, Role.PRODUCCION],
       },
       {
         title: 'Control Bisel',
         href: '/produccion/bisel',
         icon: Settings,
-        roles: [Role.PRODUCCION],
+        roles: [Role.SUPER_ADMIN, Role.PRODUCCION],
       },
       {
         title: 'Calidad',
         href: '/produccion/calidad',
         icon: BarChart3,
-        roles: [Role.PRODUCCION],
+        roles: [Role.SUPER_ADMIN, Role.PRODUCCION],
       },
     ],
   },

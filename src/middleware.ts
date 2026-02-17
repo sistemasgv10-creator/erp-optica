@@ -21,6 +21,16 @@ export default withAuth(
     // Verificar permisos de acceso a módulos
     const role = token.role;
 
+    // SUPER_ADMIN tiene acceso a todo el sistema
+    if (role === 'SUPER_ADMIN') {
+      return NextResponse.next();
+    }
+
+    // Admin - solo SUPER_ADMIN puede acceder
+    if (pathname.startsWith('/admin')) {
+      return NextResponse.redirect(new URL(getDashboardRouteForRole(role), req.url));
+    }
+
     // Distribuidora
     if (pathname.startsWith('/distribuidora')) {
       if (!['ADMIN_DISTRIBUIDORA', 'VENDEDOR'].includes(role)) {
@@ -73,6 +83,7 @@ export default withAuth(
 export const config = {
   matcher: [
     '/',
+    '/admin/:path*',
     '/distribuidora/:path*',
     '/almacen/:path*',
     '/produccion/:path*',

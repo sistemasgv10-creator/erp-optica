@@ -12,6 +12,7 @@ interface HeaderProps {
 }
 
 const roleNames: Record<string, string> = {
+  SUPER_ADMIN: 'Super Administrador',
   ADMIN_DISTRIBUIDORA: 'Admin Distribuidora',
   VENDEDOR: 'Vendedor',
   ALMACEN_BENEFICENCIA: 'Almacén Beneficencia',
